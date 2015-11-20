@@ -1,0 +1,137 @@
+<html>
+<head>
+	<title>Using Selection to Power Parameter</title>
+	
+	<script type='text/javascript' src="http://localhost/javascripts/api/tableau-2.0.0.min.js"></script>
+	
+	<script>
+        var viz_url = "http://{tableau server}/views/..."
+        var param_name = '';
+        var selection_field_name = '';  
+        var worksheets_to_listen_on = {'Sheet 1' : true, 'Sheet 2' : true};
+        console.log(worksheets_to_listen_on);
+		var viz;
+		var book;
+		var activeSheet;
+        
+		function initViz(){
+			var placeholderDiv = document.getElementById("tableauViz");
+			var options = { 
+				hideTabs: false,
+				hideToolbar: true,
+                // onFirstInteractive is a callback that happens once the Viz is loaded
+				onFirstInteractive: function () {
+				  book = viz.getWorkbook();
+				  activeSheet = book.getActiveSheet();
+				}
+			};
+            
+            // Creates the actual viz
+            viz = new tableau.Viz(placeholderDiv,viz_url,options);
+			
+            
+            viz.addEventListener("marksselection",getMarks);
+			
+            
+			function getMarks(e){
+                console.log('Result of getMarks:');
+                console.log(e);
+                var ws = e.getWorksheet();
+                console.log('Worksheet obj:');
+                console.log(ws);
+                var ws_name = ws.getName();
+                
+                // Here you can route for specific worksheets based on the object defined at the beginning
+                if ( worksheets_to_listen_on[ws_name]) {
+                    console.log('Marks selection being routed from ' + ws_name);
+                    e.getMarksAsync().then( handleMarksSelection );
+                }
+			}
+			
+			function handleMarksSelection(m){
+				
+				console.log("[Event] Marks selection, " + m.length + " marks");
+				console.log(m);
+				
+				// Cleared selection detection
+				if(m.length == 0){
+					//$("#running_action_history").fadeOut();
+                                  // Reset to 'All' if no selection
+                    
+                    viz.getWorkbook().changeParameterValueAsync(param_name,'All').then(
+                        function (){ console.log('Parameter set back to All');} 
+                    );
+					return;
+				}
+				
+				// MarksSelection object is a collection of Marks class with numeric index
+				// Marks contain Pairs, accessed by getPairs(), which is also collection
+				// Easiest way to get the Values for a given field is to add the following method to the MarksSelection object		
+				// Pass the text value of the Field Name as fName and will return array of all of those values from the selected mark
+				m.getValuesForGivenField = function(fName){
+					var valuesArray = new Array();
+					
+					// Run through each Mark in the Marks Collection
+					for(i=0;i<this.length;i++){					
+						pairs = this[i].getPairs();							
+						for(j=0;j<pairs.length;j++){
+							if( pairs[j].fieldName == fName) {
+								valuesArray.push( pairs[j].formattedValue );
+								// Alternatively you could get the value not formattedValue
+								// valuesArray.push( pairs[j].value );
+							}
+						}
+					}
+					return valuesArray;
+				}
+				
+				values = m.getValuesForGivenField(selection_field_name); // Replace with the name of the field you want
+				console.log(values);
+                
+				// Then do your thing with that array of Values
+				if (values.length === 1){
+
+                    viz.getWorkbook().changeParameterValueAsync(param_name,values[0]).then(
+                        function (){ console.log('Parameter set');} 
+                    );
+                }
+				
+				/*
+				for(i=0;i<m.length;i++){
+				
+					pairs = m[i].getPairs();
+					console.log("Selected Mark " + i + " , " + pairs.length + " pairs of data:");
+					
+					for(j=0;j<pairs.length;j++){
+						
+						// Pair has three properties: fieldName, formattedValue, value, accessed DIRECTLY, without setter / getter method
+						console.log(
+							"Pair " + j + " -- " + 
+							"Field Name: " + field_names[j] + " , " +
+							"Value: " + pairs[j].value + " , " + 
+							"Formatted Value: " + pairs[j].formattedValue
+						);
+						
+
+						
+						//console.log(pairs[j]);
+					}
+
+				}*/
+				
+				
+			}
+		}
+		
+	</script>
+	
+</head>
+<body onload="initViz();">
+
+<div id='tableauViz'></div>
+
+
+
+</body>
+</html>
+
