@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    
+    <script type='text/javascript' src='http://bhowell-lap/javascripts/api/tableau-2.0.0.min.js'></script>
+    
+    <title>Web Edit Embed Wrapper</title>
+    
+    <script>
+        /* 
+            Must be the same as the domain declared by the embedding application page.
+            You don't switch to this domain until later. In essence, this page lives in the 
+            domain of the Tableau Server up until it has determined that the web edit view is
+            moving back to the standard viz embed. At that point, this page declares it is
+            now in the domain of the application page that embeds this page as an iframe. 
+        */
+        var declared_domain = '{yourdomain.com}'; // Change here
+        
+        var domain_name = 'http://{yourdomain.com}'; // Change here
+        
+        // Simple parsing of the URL passed using the src= parameter in the URL
+        var url_params = window.location.search;
+        var src_param = url_params.split('src=')[1];
+        //alert(src_param);
+        view_location = src_param.split('views/')[1];
+        
+        
+        var view_url = 'views/' + view_location;
+        var edit_ending = 'authoring/' + view_location;
+
+		var vizUrl = domain_name + "/" + view_url ; 
+        var edit_url = domain_name + "/" + edit_ending ; 
+
+        var edit_frame_url = edit_url;
+        
+        var workbook_name;
+        var view_name;
+        
+        var edit_iframe_load_count = 0;
+       
+        var viz;
+        var book;
+        var edit_hidden = true;
+        var edit_iframe;
+        window.onload = create_edit_iframe;        
+             
+        function create_edit_iframe(){
+            var edit_location = edit_url;
+            edit_iframe = document.createElement('iframe');
+            edit_iframe.src = edit_location;
+            
+            // These make everything seamless and it fills up the entire page (which is really the frame)
+            edit_iframe.style.padding = '0px';
+            edit_iframe.style.margin = '0px';        
+            edit_iframe.style.border = 'none';
+            edit_iframe.style.position = 'absolute';
+            edit_iframe.style.top = '0px';
+            edit_iframe.style.left = '0px';
+            
+            // It seems width can be left to 100%, but height still needs to match what is in the full_embed outer page. 
+            // Might be better to match both with pixels. Real goal is no scrollbars. Adjust accordingly
+            edit_iframe.style.width = '100%';
+            edit_iframe.style.height = '800px';
+            
+            document.body.appendChild(edit_iframe);
+           
+            edit_hidden = false;
+            // Find the iframe
+            edit_iframe.onload = function(){
+                
+                if (edit_iframe_load_count > 0){
+                   // Corrects for even if IE8 isn't in standards mode
+                   var y = (edit_iframe.contentWindow || edit_iframe.contentDocument);
+                   url_on_load = y.location.href;
+                   //alert("new url: " + url_on_load + "\n" + "original url: " + edit_frame_url);
+                   // Capture when try to load view based on the fragment
+                   if ( url_on_load.search('/#/views') !== -1 ){
+                        /* 
+                            Most essential part. This switches the declared domain so that the iframe
+                            is now in the same "declared domain" as the originating page. This allows the
+                            next call to the function in the parent page
+                            
+                            Both parent page and this page must declare the same domain listed here.
+                        
+                        */
+                        document.domain = declared_domain;
+                        
+                        // This function is declared in the application page
+                        parent.iframe_change(url_on_load);
+                    }                   
+                }
+                // Increment this after to skip the first run
+                edit_iframe_load_count++;
+           }
+
+        }
+    
+    </script>
+</head>
+
+<body>
+
+</body>
+
+</html>
