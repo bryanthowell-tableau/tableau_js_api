@@ -29,8 +29,16 @@
         var view_url = 'views/' + view_location;
         var edit_ending = 'authoring/' + view_location;
 
-		var vizUrl = domain_name + "/" + view_url ; 
-        var edit_url = domain_name + "/" + edit_ending ; 
+        // Check for /t/ which is the site location
+        if ( src_param.indexOf('/t/') !== -1){
+            site_location = src_param.split('t/')[1].split('/views')[0];
+            var vizUrl = domain_name + "/t/" + site_location + "/" + view_url ; 
+            var edit_url = domain_name + "/t/" + site_location + "/" + edit_ending ; 
+        }
+        else{
+            var vizUrl = domain_name + "/" + view_url ; 
+            var edit_url = domain_name + "/" + edit_ending ; 
+        }
 
         var edit_frame_url = edit_url;
         
@@ -75,7 +83,7 @@
                    url_on_load = y.location.href;
                    //alert("new url: " + url_on_load + "\n" + "original url: " + edit_frame_url);
                    // Capture when try to load view based on the fragment
-                   if ( url_on_load.search('/#/views') !== -1 ){
+                   if ( url_on_load.search('/#/views') !== -1 || url_on_load.search('/#/site/') !== -1 ){
                         /* 
                             Most essential part. This switches the declared domain so that the iframe
                             is now in the same "declared domain" as the originating page. This allows the
