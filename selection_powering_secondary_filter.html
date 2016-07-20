@@ -140,7 +140,7 @@
                             console.log("All the filters");
                             console.log(f);
                         });
-                        ws.applyFilterAsync("Place Name","Portlandia",tableau.FilterUpdateType.REPLACE).then( function () { console.log("Filter has been placed");}, function(err){ console.log(err);});
+                        ws.applyFilterAsync("[Sheet1 (Fake Oregon data)].[Place Name]","Portlandia",tableau.FilterUpdateType.REPLACE).then( function () { console.log("Filter has been placed");}, function(err){ console.log(err);});
                     }
                 }
                 

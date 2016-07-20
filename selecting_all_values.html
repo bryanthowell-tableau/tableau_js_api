@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>getData() Basic Example</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+        
+        <script type="text/javascript" src="http://{tableauserver}/javascripts/api/tableau-2.min.js"></script> <!-- Change this to point to your server -->
+        <script type="text/javascript">
+            var viz, sheet, table;
+            var server_location = 'http://';
+            var workbook = 'SelectionTest';
+            var view_name = 'Dashbord';
+            var current_sheet;
+            //var view_name = 'Performance';
+            function initViz() {
+                var containerDiv = document.getElementById("vizContainer"),
+                    url = server_location + '/views/' + workbook + '/' + view_name,
+                    options = {
+                        hideTabs: true,
+                        hideToolbar: true,
+                        onFirstInteractive: function () {
+                            $('#getData').removeAttr("disabled"); // enable our button once the viz is ready
+                            $('#getData2').removeAttr("disabled"); // enable our button once the viz is ready
+                        }
+                    };
+                
+                viz = new tableau.Viz(containerDiv, url, options); 
+            }
+            
+            function selectAllFromView(sheet_name_in_dashboard, selector_field_name, selector_field_value, field_name_with_values){
+                workbook = viz.getWorkbook();
+                sheet = workbook.getActiveSheet();
+                console.log(sheet.getSheetType());
+                switch (sheet.getSheetType()) {
+                   case 'worksheet':
+                        console.log('I am a worksheet');
+                        current_sheet = sheet;
+                        
+                    break;
+                    case 'dashboard':
+                     console.log('I am a dashboard');
+                     db_objects = sheet.getObjects();
+                     console.log(db_objects);
+                     worksheets = sheet.getWorksheets();
+                     console.log(worksheets);
+                     for(i=0;i<worksheets.length;i++){
+                        console.log(worksheets[i]);
+                        console.log(worksheets[i].getName());
+                        if (worksheets[i].getName() == sheet_name_in_dashboard){
+                            console.log(worksheets[i]);
+                            console.log(worksheets[i].getName());
+                            current_sheet = worksheets[i];
+                        }
+                    }
+                    case 'story':
+                        console.log('I am a story, not going to do anything');
+                        return false;
+                        break;
+                }
+                
+                current_sheet.selectMarksAsync(selector_field_name, selector_field_value, 
+                                                           tableau.SelectionUpdateType.REPLACE).then(
+                                function() {
+                                    console.log('Selection updated');
+                                    current_sheet.getSelectedMarksAsync().then(
+                                        function(marks){
+                                            console.log('Got the selected marks');
+                                            console.log(marks);
+                                            value_type = 'value';
+                                            var value_array = new Array();
+                                            for(k=0;k<marks.length;k++){
+                                                pairs = marks[k].getPairs();
+                                                console.log(marks[k].getPairs());
+                                                console.log("Selected Mark " + k + " , " + pairs.length + " pairs of data");
+                                                for(j=0;j<pairs.length;j++){
+                                                    // Pair has three properties: fieldName, formattedValue, value, accessed DIRECTLY, without setter / getter method
+                                                    /* Enable for debugging
+                                                    console.log(
+                                                    "Pair " + j + " -- " +
+                                                    "Field Name: " + pairs[j].fieldName + " , " +
+                                                    "Value: " + pairs[j].value + " , " +
+                                                    "Formatted Value: " + pairs[j].formattedValue
+                                                    );*/
+                                                    if( pairs[j].fieldName === field_name_with_values ) {
+                                                        if(value_type == 'value'){
+                                                            value_array.push( pairs[j].value );
+                                                        }
+                                                        if(value_type == 'formatted value') {
+                                                            value_array.push( pairs[j].formattedValue ) ;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            console.log(value_array);
+                                            console.log('Clearing the Marks selection');
+                                            current_sheet.clearSelectedMarksAsync();
+                                        }
+                                    );
+                                }
+                            );
+            }
+            
+            function selectAllGetSummaryData(sheet_name_in_dashboard, field_name_with_values){
+                workbook = viz.getWorkbook();
+                sheet = workbook.getActiveSheet();
+                console.log(sheet.getSheetType());
+                // Set whether you return values or formatted values
+                var value_type = 'value';
+                switch (sheet.getSheetType()) {
+                   case 'worksheet':
+                        console.log('I am a worksheet');
+                        current_sheet = sheet;
+                     break;
+                   case 'dashboard':
+                     console.log('I am a dashboard');
+                     db_objects = sheet.getObjects();
+                     console.log(db_objects);
+                     worksheets = sheet.getWorksheets();
+                     console.log(worksheets);
+                     for(i=0;i<worksheets.length;i++){
+                        console.log(worksheets[i]);
+                        console.log(worksheets[i].getName());
+                        // Set the current_sheet variable to the sheet in the dashboard
+                        if (worksheets[i].getName() == sheet_name_in_dashboard){
+                            current_sheet = worksheets[i];
+                        }
+                     }
+                     break;
+                   case 'story':
+                     console.log('I am a story, not going to do anything');
+                     return false;
+                     break;
+                }
+                
+                options = {
+                            maxRows: 0, // Max rows to return. Use 0 to return all rows
+                            ignoreAliases: false,
+                            ignoreSelection: true
+                        };
+                current_sheet.getSummaryDataAsync(options).then(function(t){
+                    console.log(t);
+                    console.log("Here's the row count");
+                    console.log(t.getTotalRowCount());
+                    console.log("Here them columns");
+                    columns = t.getColumns();
+                    console.log(columns);
+                    var field_position;
+                    // Find the position the desired field is in
+                    for(j=0;j<columns.length;j++){
+                        console.log(columns[j]);
+                        name = columns[j].getFieldName();
+                        if (name == field_name_with_values){
+                            index = columns[j].getIndex();
+                            field_position = index;
+                            console.log( name + " is in position " + index);
+                        }
+                    }
+                    data = t.getData();
+                    console.log("Here that data");
+                    console.log(data);
+                    
+                    var value_array = new Array();
+                    // Data is returned as Rows, then with with a second array of the columns
+                    for (var i=0;i<data.length;i++){
+                        if(value_type == 'value'){
+                            value_array.push( data[i][field_position].value );
+                        }
+                        if(value_type == 'formatted value') {
+                            value_array.push( data[i][field_position].formattedValue ) ;
+                        }
+                    }
+                   
+                    console.log(value_array);
+                });
+            }
+            
+        </script>
+    </head>
+
+    <body onload="initViz();">
+        <div class="page-header">
+            <h1>getData() Basic Example</h1>
+            <p>Click the "Get Data" button to get underlying data for the viz.</p>
+            <button id="getDataPre10" onclick="selectAllFromView('Profit','Select All', 1, 'SUM(Profit)');" class="btn" disabled>Get Data Using Get Using Selection, Pre 10.0</button>
+            <button id="getData10" onclick="selectAllGetSummaryData('Profit','SUM(Profit)')" class="btn" disabled>Get Data Using Get Underlying Data from 10.0</button>
+        </div>
+        <div id="vizContainer" style="width:600px; height:600px;"></div>
+        <div id="dataTarget"></div>
+    </body>
+</html>
