@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>getData() to Data Tables</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.12/css/jquery.dataTables.css">
+        <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.12/js/jquery.dataTables.js"></script>
+        
+        <script type="text/javascript" src="http://10.212.39.10/javascripts/api/tableau-2.min.js"></script> <!-- Change this to point to your server -->
+        <script type="text/javascript">
+            var viz, sheet, table;
+            var server_location = 'http://';
+            var workbook = '';
+            var view_name = '';
+            var current_sheet;
+            function initViz() {
+                var containerDiv = document.getElementById("vizContainer"),
+                    url = server_location + '/views/' + workbook + '/' + view_name,
+                    options = {
+                        hideTabs: false,
+                        hideToolbar: false,
+                        onFirstInteractive: function () {
+                            // Build the sheet selector
+                            sheet_names = getAllSheetsInViz();
+                            document.getElementById('sheet_picker').appendChild(
+                                buildSelectBox('sheet_select','sheet_select',sheet_names)
+                                
+                            );
+                            
+                        }
+                    };
+                
+                viz = new tableau.Viz(containerDiv, url, options); 
+            }
+            
+            function buildSelectBox(name, id, options_array){
+                select = document.createElement('select');
+                select.id = id;
+                select.name = name;
+                for(var i=0;i<options_array.length; i++){
+                    option = document.createElement('option');
+                    option.value = options_array[i];
+                    option.appendChild(document.createTextNode(options_array[i]));
+                    select.appendChild(option);
+                }
+                console.log(select);
+                return select;
+            }
+            
+            function getAllSheetsInViz(){
+                workbook = viz.getWorkbook();
+                sheet = workbook.getActiveSheet();
+                console.log(sheet.getSheetType());
+                sheet_names = new Array();
+                switch (sheet.getSheetType()) {
+                   case 'worksheet':
+                        current_sheet = sheet;
+                        sheet_names.push(current_sheet.getName());
+                    break;
+                    case 'dashboard':
+
+                     db_objects = sheet.getObjects();
+                     console.log(db_objects);
+                     worksheets = sheet.getWorksheets();
+                     console.log(worksheets);
+                     for(i=0;i<worksheets.length;i++){
+                        console.log(worksheets[i]);
+                        console.log(worksheets[i].getName());
+                        sheet_names.push(worksheets[i].getName());
+                    }
+                    break;
+                    case 'story':
+                        return false;
+                        break;
+                }
+                return sheet_names;
+            }
+            
+            function setCurrentSheetByName(sheet_name){
+                workbook = viz.getWorkbook();
+                sheet = workbook.getActiveSheet();
+                switch (sheet.getSheetType()) {
+                   case 'worksheet':
+                        current_sheet = sheet;
+                    break;
+                    case 'dashboard':
+                     worksheets = sheet.getWorksheets();
+                     console.log(worksheets);
+                     for(i=0;i<worksheets.length;i++){
+                        console.log(worksheets[i]);
+                        console.log(worksheets[i].getName());
+                        if (worksheets[i].getName() == sheet_name){
+                            console.log(worksheets[i]);
+                            console.log(worksheets[i].getName());
+                            current_sheet = worksheets[i];
+                        }
+                    }
+                    break;
+                    case 'story':
+                        return false;
+                        break;
+                }
+            }
+        
+            // jQuery DataTables columns takes an array of objects, each with a title property
+            function convertColumnsObjectToDataTablesConfigOptionArray(sheetDataObj){
+                col_obj = sheetDataObj.getColumns();
+                col_array = new Array();
+                for (var k=0; k < col_obj.length; k++){
+                    col_array[k] = { title : col_obj[k].getFieldName() };
+                }
+                console.log(col_array);
+                return col_array;
+            }
+            
+            // Returns a simple ordered array of the column / field names
+            function convertColumnsObjectToArrayOfNames(sheetDataObj){
+                col_obj = sheetDataObj.getColumns();
+                col_array = new Array();
+                for (var k=0; k < col_obj.length; k++){
+                    col_array[k] = col_obj[k].getFieldName();
+                }
+                console.log(col_array);
+                return col_array;
+            }
+            
+            
+            /*  getData() returns an array (rows) of arrays (columns) of objects, which have a formattedValue and a value property. 
+                This function lets you pick either 'formatted' or 'value' and then returns a pure array of arrays with
+                actual values in the columns array. Useable for pure HTML table or for jQuery DataTables
+            */
+            function convertTableObjectToArray(sheetDataObj, formatted_or_value){
+                // This is an array of objects, 
+                data = sheetDataObj.getData();
+                final_table = new Array();
+                console.log(data.length);
+                for(var i=0; i < data.length; i++){
+                    final_table[i] = new Array();
+                    for(var j=0; j < data[i].length; j++){
+                        if (formatted_or_value.toLowerCase() === 'formatted'){
+                            final_table[i][j] = data[i][j].formattedValue;
+                        }
+                        else if (formatted_or_value.toLowerCase() === 'value'){
+                            final_table[i][j] = data[i][j].value;
+                        }
+                    }
+                }
+                return final_table;
+            }
+            
+            function create_html_table_element_from_tableau_object(sheetDataObj, formatted_or_value){
+                var column_header_array = convertColumnsObjectToArrayOfNames(sheetDataObj);
+                var table_body_array = convertTableObjectToArray(sheetDataObj, formatted_or_value);
+            
+                // Solution patterned on http://stackoverflow.com/questions/15164655/generate-html-table-from-2d-javascript-array
+              var table = document.createElement('table');
+              var tableHead = document.createElement('thead');
+              var th = document.createElement('th');
+              for(var i=0; i < column_header_array.length; i++){
+                var td = document.createElement('td');
+                td.appendChild(document.createTextNode(column_header_array[i]));
+                th.appendChild(td);
+              }
+              tableHead.appendChild(th);
+              table.appendChild(tableHead);
+                  
+              var tableBody = document.createElement('tbody');
+              
+              table_body_array.forEach(function(rowData) {
+                var row = document.createElement('tr');
+
+                rowData.forEach(function(cellData) {
+                  var cell = document.createElement('td');
+                  cell.appendChild(document.createTextNode(cellData));
+                  row.appendChild(cell);
+                });
+
+                tableBody.appendChild(row);
+              });
+
+              table.appendChild(tableBody);
+              return table;
+
+            }
+            
+
+            function buildSimpleHTMLTable(sheetDataObj, formatted_or_value, element_id_to_insert_into){
+                var table = create_html_table_element_from_tableau_object(sheetDataObj, formatted_or_value);
+                table.id = 'myGreatTable';
+                // Add any other properties you'd like here
+                document.getElementById(element_id_to_insert_into).appendChild(table);
+            }
+            
+            function buildDataTablesTable(sheetDataObj, formatted_or_value, empty_table_id){
+                var column_header_array = convertColumnsObjectToDataTablesConfigOptionArray(sheetDataObj);
+                var table_body_array = convertTableObjectToArray(sheetDataObj, formatted_or_value);
+                try {
+                    $('#' + empty_table_id).DataTable( 
+                        {
+                        data: table_body_array, 
+                        columns: column_header_array
+                    });
+                }
+                catch (err){
+                    alert(err);
+                }       
+            }
+            
+            function makeTable(){
+                // get the table options
+                // summary / underlying
+                console.log('Starting to make the table');
+                select_index = document.getElementById('summary_underlying').options.selectedIndex;
+                var summary_or_underlying = document.getElementById('summary_underlying').options[select_index].value;
+                console.log(summary_or_underlying);
+                // sheet
+                select_index = document.getElementById('sheet_select').options.selectedIndex;
+                var sheet_name = document.getElementById('sheet_select').options[select_index].value;
+                console.log(sheet_name);
+                get_data_options = {
+                                maxRows: 0, // Max rows to return. Use 0 to return all rows
+                                ignoreAliases: false,
+                                ignoreSelection: false,
+                                includeAllColumns: true
+                            };
+                // set the current_sheet global variable based on the selected sheet name
+                console.log('Setting the current_sheet value');
+                setCurrentSheetByName(sheet_name);
+                console.log(current_sheet);
+                switch (summary_or_underlying){
+                    case 'summary':
+                        current_sheet.getSummaryDataAsync(get_data_options).then(function(t){
+                            buildSimpleHTMLTable(t, 'formatted', 'dataTarget');
+                            buildDataTablesTable(t, 'formatted', 'dtTable');
+                        });
+                    break;
+                    case 'underlying':
+                        current_sheet.getUnderlyingDataAsync(get_data_options).then(function(t){
+                            buildSimpleHTMLTable(t, 'formatted', 'dataTarget');
+                            buildDataTablesTable(t, 'formatted', 'dtTable');
+                        });
+                    break;
+                }
+                
+                    
+            }
+           
+        </script>
+    </head>
+
+    <body onload="initViz();">
+        <div class="page-header">
+            <h1>getData() Create Table Example</h1>
+            <p>Choose a sheet you want data from <span id='sheet_picker'></span>
+            <p>Choose Summary or Underlying Data <select name='summary_underlying' id='summary_underlying'><option value='summary'>Summary</option><option value='underlying'>Underlying</option></select>
+            <p>
+            <button id="getDataSummary" onclick="makeTable()" class="btn">Make Data Table from Selected Options</button>
+        </div>
+        <div id="vizContainer" style="width:800px; height:900px;"></div>
+        <div id="dataTarget"><h3>Simple HTML table</h3><p></div>
+        
+        <div id='dataTablesDiv'><h3>DataTables table</h3><table id="dtTable" class="display" cellspacing="0" width="100%"></table></div>
+    </body>
+</html>
