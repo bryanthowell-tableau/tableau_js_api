@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Set Date Filter to Last N Periods </title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+        <!-- Use moment.js for accurate time adding -->
+        <script src='moment.js'></script>
+        <script type="text/javascript">
+
+            // Array of Sheet Names not to Check in the Dashboard
+            var sheets_to_skip = ['Username'];
+            
+            var viz;
+            var current_sheet;
+        
+            /* 
+                The following two functions allow the page embedded in the dashboard to access the 
+                JS API object for the overall viz.
+                All credit to Tamas Foldi http://databoss.starschema.net/tableau-javascript-api-without-embedding/
+            
+            */
+            function getTableau() {
+              return parent.parent.tableau;
+            };
+            
+            function getCurrentViz() {
+              return getTableau().VizManager.getVizs()[0];
+            };
+            
+            
+            /* 
+                Because the calls to retrieve filters are Asynchronous, the actions that happen after
+                can end up in a different "context". The best mechanism to know you are setting values
+                on the same variables and able to know when everything has finished is to set variables
+                in the outermost scope and reference them in all callbacks
+            */
+            // Global array to hold any filters that come in from the viz
+            var filters_array = new Array();
+
+            // Global number of filters that have been returned
+            var sheets_worked_through = 0;
+            var total_sheets = 0;
+            
+            
+            function setFilterToRelative(field_name, date_part, periods_back){
+                viz = getCurrentViz();
+                workbook = viz.getWorkbook();
+                sheet = workbook.getActiveSheet();
+                var now_max = moment();
+                var now_min = moment().subtract(periods_back, date_part);
+                 // This handles whether you have a sheet, a dashboard or a story
+                 
+                switch (sheet.getSheetType()) {
+                   case 'worksheet':
+                        console.log('I am a worksheet');
+                        current_sheet = sheet;
+                        total_sheets = 1;
+                        current_sheet.applyRangeFilterAsync(field_name, {min: now_min.toDate(), max: now_max.toDate() }).then(
+                            function (f){
+                            }
+                        );
+                        
+                    break;
+                    case 'dashboard':
+                        console.log('I am a dashboard');
+                        db_objects = sheet.getObjects();
+                        worksheets = sheet.getWorksheets();
+                        // Loop through all the sheets of the dashboard
+                        for(i=0;i<worksheets.length;i++){
+                            var sheet_name = worksheets[i].getName();
+                            console.log("Looking for filters on sheet: " + sheet_name);
+                                // Skip any sheet names in the sheets_to_skip array
+                            if (sheets_to_skip.indexOf(sheet_name) !== -1){ 
+                                console.log("Sheet Named: " + sheet_name + " found, skipping");
+                                continue;
+                            }
+                            
+                            // Increment the global total sheet count AFTER we skip
+                            total_sheets++;
+                            console.log(total_sheets + " sheets found so far");
+                           
+                            var current_sheet = worksheets[i];
+                            current_sheet.applyRangeFilterAsync(field_name, {min: now_min.toDate(), max: now_max.toDate() }).then(
+                                function (f){
+                                }
+                            );
+                        }
+                    break;
+                case 'story':
+                    console.log('I am a story, not going to do anything');
+                    return false;
+                break;
+                }
+                
+                
+                
+            }
+
+             
+            //from http://www.netlobo.com/url_query_string_javascript.html with addition of URI decoding
+            // Gets a given URL parameter value
+            function gup( name ){
+                name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
+                var regexS = "[\\?&]"+name+"=([^&#]*)";
+                var regex = new RegExp( regexS );
+                var decoded_uri = decodeURIComponent(window.location.href);
+                var results = regex.exec( decoded_uri );
+                if( results == null )
+                return "";
+                else
+                return results[1];
+            }
+            
+            $( document ).ready(function (){
+                // Set up URL parameter reading for total flexiblity
+                // FieldName, DatePart, PeriodsBack
+                // Defaults to 1 month
+                var field = gup('FieldName');
+                if (field == ""){
+                    return false; // Exit if no field specified
+                }
+                var date_part = 'months';
+                if ( gup('DatePart') != ""){
+                    date_part = gup('DatePart');
+                }
+                var periods_back = 1;
+                if ( gup('PeriodsBack') != ""){
+                    periods_back = parseInt(gup('PeriodsBack'));
+                }
+                setFilterToRelative(field, date_part, periods_back);
+            });
+  
+        </script>
+    </head>
+
+    <body>
+
+    </body>
+</html>
