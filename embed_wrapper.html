@@ -3,7 +3,7 @@
 <head>
 <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
     
-    <script type='text/javascript' src='http://{}/javascripts/api/tableau-2.0.0.min.js'></script>
+    <script type='text/javascript' src='http://{}/javascripts/api/tableau-2.js'></script>
     
     <title>Web Edit Embed Wrapper</title>
     
@@ -69,7 +69,7 @@
             // It seems width can be left to 100%, but height still needs to match what is in the full_embed outer page. 
             // Might be better to match both with pixels. Real goal is no scrollbars. Adjust accordingly
             edit_iframe.style.width = '100%';
-            edit_iframe.style.height = '800px';
+            edit_iframe.style.height = '100%';
             
             document.body.appendChild(edit_iframe);
            
@@ -83,7 +83,7 @@
                    url_on_load = y.location.href;
                    //alert("new url: " + url_on_load + "\n" + "original url: " + edit_frame_url);
                    // Capture when try to load view based on the fragment
-                   if ( url_on_load.search('/#/views') !== -1 || url_on_load.search('/#/site/') !== -1 ){
+                   if ( url_on_load.search('/#/views') !== -1 || url_on_load.search('/#/site/') !== -1 || url_on_load.search('/t/') !== -1 ){
                         /* 
                             Most essential part. This switches the declared domain so that the iframe
                             is now in the same "declared domain" as the originating page. This allows the

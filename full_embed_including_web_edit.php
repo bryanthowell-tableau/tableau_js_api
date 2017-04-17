@@ -31,7 +31,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
     
-    <script type='text/javascript' src='http://localhost/javascripts/api/tableau-2.0.0.min.js'></script>
+    <script type='text/javascript' src='http://localhost/javascripts/api/tableau-2.js'></script>
     
     <title>Full Tableau Embed in iframe Including Web Edit</title>
     
@@ -110,7 +110,39 @@
             // Create a new Viz object with the new URL
             $("#tableauViz").show();
             viz = new tableau.Viz( $("#tableauViz").get(0), vizUrl, options);
+     
+ function iframe_change(new_url){
+            // Destroy the original edit_iframe so you can build another one later if necessary
+            $(edit_iframe).remove();
+            // Destroy the original Tableau Viz object so you can create new one with URL of the Save(d) As version
+            viz.dispose();
             
+            // Reset the global vizURL at this point so that it all works circularly
+            //viz_url = new_url;
+            console.log("New URL should be: " + new_url);
+            
+            var url_parts = new_url.split('?');
+            viz_url = url_parts[0];
+            if (viz_url.search('authoring') !== -1){
+                console.log('Found an authoring url');
+                vizUrlForWebEdit = viz_url; 
+                launch_edit();
+                return;
+           }
+            // Handle site
+            if (viz_url.search('/site/') !== -1){
+                var url_parts = viz_url.split('#/site/');
+                viz_url = url_parts[0] + "t/" + url_parts[1];
+                vizUrlForWebEdit = viz_url;
+            }
+            console.log("New URL should be: " + viz_url);
+            
+            // Create a new Viz object with the new URL
+            $("#tableauViz").show();
+            console.log("tableauViz div now is shown");
+            viz = new tableau.Viz( document.getElementById("tableauViz"), viz_url, options);
+            console.log("Viz should be created");
+     
         }
          
     </script>
