@@ -117,7 +117,7 @@ function extendTimeoutCookie(){
     var d = new Date();
     d.setTime(d.getTime() + (pingMinutes*60*1000));
     // Store the current time plus the pingMinutes in the cookie as a string
-    setCookie(timeoutCookieName, d.toString(), 0);
+    setCookie(timeoutCookieName, d.valueOf(), 0);
 }
 
 function invalidateTimeoutCookie(){
